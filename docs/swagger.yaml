@@ -328,6 +328,80 @@ info:
   contact: {}
   license: {}
 paths:
+  /market/v1/charts:
+    get:
+      consumes:
+      - application/json
+      description: Get the charts data from an market and coin/token
+      operationId: get_charts_data
+      parameters:
+      - default: 60
+        description: Coin ID
+        in: query
+        name: coin
+        required: true
+        type: integer
+      - description: Token ID
+        in: query
+        name: token
+        type: string
+      - default: 1574483028
+        description: Start timestamp
+        in: query
+        name: time_start
+        type: integer
+      - default: USD
+        description: The currency to show charts
+        in: query
+        name: currency
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/blockatlas.ChartData'
+      summary: Get charts data for a specific coin
+      tags:
+      - charts
+  /market/v1/info:
+    get:
+      consumes:
+      - application/json
+      description: Get the charts coin info data from an market and coin/contract
+      operationId: get_charts_coin_info
+      parameters:
+      - default: 60
+        description: Coin ID
+        in: query
+        name: coin
+        required: true
+        type: integer
+      - description: Token ID
+        in: query
+        name: token
+        type: string
+      - default: 1574483028
+        description: Start timestamp
+        in: query
+        name: time_start
+        type: integer
+      - default: USD
+        description: The currency to show coin info in
+        in: query
+        name: currency
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/blockatlas.ChartCoinInfo'
+      summary: Get charts coin info data for a specific coin
+      tags:
+      - charts
   /market/v1/ticker:
     get:
       consumes:
@@ -559,80 +633,6 @@ paths:
       tags:
       - platform
       - tx
-  /v1/market/charts:
-    get:
-      consumes:
-      - application/json
-      description: Get the charts data from an market and coin/token
-      operationId: get_charts_data
-      parameters:
-      - default: 60
-        description: Coin ID
-        in: query
-        name: coin
-        required: true
-        type: integer
-      - description: Token ID
-        in: query
-        name: token
-        type: string
-      - default: 1574483028
-        description: Start timestamp
-        in: query
-        name: time_start
-        type: integer
-      - default: USD
-        description: The currency to show charts
-        in: query
-        name: currency
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/blockatlas.ChartData'
-      summary: Get charts data for a specific coin
-      tags:
-      - charts
-  /v1/market/info:
-    get:
-      consumes:
-      - application/json
-      description: Get the charts coin info data from an market and coin/contract
-      operationId: get_charts_coin_info
-      parameters:
-      - default: 60
-        description: Coin ID
-        in: query
-        name: coin
-        required: true
-        type: integer
-      - description: Token ID
-        in: query
-        name: token
-        type: string
-      - default: 1574483028
-        description: Start timestamp
-        in: query
-        name: time_start
-        type: integer
-      - default: USD
-        description: The currency to show coin info in
-        in: query
-        name: currency
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/blockatlas.ChartCoinInfo'
-      summary: Get charts coin info data for a specific coin
-      tags:
-      - charts
   /v2/{coin}/collections/{address}:
     get:
       consumes:
