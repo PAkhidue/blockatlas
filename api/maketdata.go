@@ -44,7 +44,7 @@ func SetupMarketAPI(router gin.IRouter, db storage.Market) {
 // @Param token query string false "token id"
 // @Param currency query string false "the currency to show the quote" default(USD)
 // @Success 200 {object} blockatlas.Ticker
-// @Router /market/v1/ticker [get]
+// @Router /v1/market/ticker [get]
 func getTickerHandler(storage storage.Market) func(c *gin.Context) {
 	if storage == nil {
 		return nil
@@ -84,7 +84,7 @@ func getTickerHandler(storage storage.Market) func(c *gin.Context) {
 // @Tags ticker
 // @Param tickers body api.TickerRequest true "Ticker"
 // @Success 200 {object} blockatlas.Tickers
-// @Router /market/v1/tickers [post]
+// @Router /v1/market/tickers [post]
 func getTickersHandler(storage storage.Market) func(c *gin.Context) {
 	if storage == nil {
 		return nil
@@ -131,7 +131,7 @@ func getTickersHandler(storage storage.Market) func(c *gin.Context) {
 // @Param time_start query int false "Start timestamp" default(1574483028)
 // @Param currency query string false "The currency to show charts" default(USD)
 // @Success 200 {object} blockatlas.ChartData
-// @Router /market/v1/charts [get]
+// @Router /v1/market/charts [get]
 func getChartsHandler() func(c *gin.Context) {
 	var charts = marketdata.InitCharts()
 	if charts == nil {
@@ -174,7 +174,7 @@ func getChartsHandler() func(c *gin.Context) {
 // @Param time_start query int false "Start timestamp" default(1574483028)
 // @Param currency query string false "The currency to show coin info in" default(USD)
 // @Success 200 {object} blockatlas.ChartCoinInfo
-// @Router /market/v1/info [get]
+// @Router /v1/market/info [get]
 func getCoinInfoHandler() func(c *gin.Context) {
 	var charts = marketdata.InitCharts()
 	if charts == nil {
