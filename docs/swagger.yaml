@@ -610,7 +610,6 @@ paths:
       summary: Get ticker value for a specific market
       tags:
       - ticker
-  /v1/market/tickers:
     post:
       consumes:
       - application/json

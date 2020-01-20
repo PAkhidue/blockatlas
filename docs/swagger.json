@@ -329,9 +329,7 @@
                         }
                     }
                 }
-            }
-        },
-        "/v1/market/tickers": {
+            },
             "post": {
                 "description": "Get the ticker values from many markets and coin/token",
                 "consumes": [
