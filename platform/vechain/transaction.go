@@ -1,13 +1,16 @@
 package vechain
 
 import (
+	"math"
+	"math/big"
+	"strconv"
+	"sync"
+
 	"github.com/trustwallet/blockatlas/pkg/address"
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 	"github.com/trustwallet/blockatlas/pkg/errors"
 	"github.com/trustwallet/blockatlas/pkg/logger"
 	"github.com/trustwallet/blockatlas/pkg/numbers"
-	"strconv"
-	"sync"
 )
 
 func (p *Platform) GetTokenTxsByAddress(address, token string) (blockatlas.TxPage, error) {
@@ -77,11 +80,6 @@ func (p *Platform) NormalizeTokenTransaction(srcTx Tx, receipt TxReceipt) (block
 		return blockatlas.TxPage{}, errors.E("NormalizeBlockTransaction: Clauses not found", errors.Params{"tx": srcTx})
 	}
 
-	fee, err := numbers.HexToDecimal(receipt.Paid)
-	if err != nil {
-		return blockatlas.TxPage{}, err
-	}
-
 	txs := make(blockatlas.TxPage, 0)
 	for _, output := range receipt.Outputs {
 		if len(output.Events) == 0 || len(output.Events[0].Topics) < 3 {
@@ -107,7 +105,7 @@ func (p *Platform) NormalizeTokenTransaction(srcTx Tx, receipt TxReceipt) (block
 			Coin:      p.Coin().ID,
 			From:      originSender,
 			To:        originReceiver,
-			Fee:       blockatlas.Amount(fee),
+			Fee:       blockatlas.Amount(CalculateDecimals(receipt.GasUsed).String()),
 			Date:      srcTx.Meta.BlockTimestamp,
 			Type:      blockatlas.TxTokenTransfer,
 			Block:     srcTx.Meta.BlockNumber,
@@ -140,11 +138,12 @@ func (p *Platform) GetTxsByAddress(address string) (blockatlas.TxPage, error) {
 
 	txs := make(blockatlas.TxPage, 0)
 	for _, t := range transfers {
-		trxId, err := p.client.GetTransactionByID(t.Meta.TxId)
+		trxReceiptId, err := p.client.GetTransactionReceiptByID(t.Meta.TxId)
 		if err != nil {
 			continue
 		}
-		tx, err := p.NormalizeTransaction(t, trxId, address)
+
+		tx, err := p.NormalizeTransaction(t, Tx{Gas: trxReceiptId.GasUsed}, address)
 		if err != nil {
 			continue
 		}
@@ -159,7 +158,7 @@ func (p *Platform) NormalizeTransaction(srcTx LogTransfer, trxId Tx, addr string
 		return blockatlas.Tx{}, err
 	}
 
-	fee := strconv.Itoa(trxId.Gas)
+	fee := CalculateDecimals(trxId.Gas)
 	sender := address.EIP55Checksum(srcTx.Sender)
 	recipient := address.EIP55Checksum(srcTx.Recipient)
 	addrChecksum := address.EIP55Checksum(addr)
@@ -174,7 +173,7 @@ func (p *Platform) NormalizeTransaction(srcTx LogTransfer, trxId Tx, addr string
 		Coin:      p.Coin().ID,
 		From:      sender,
 		To:        recipient,
-		Fee:       blockatlas.Amount(fee),
+		Fee:       blockatlas.Amount(fee.String()),
 		Date:      srcTx.Meta.BlockTimestamp,
 		Type:      blockatlas.TxTransfer,
 		Block:     srcTx.Meta.BlockNumber,
@@ -186,6 +185,13 @@ func (p *Platform) NormalizeTransaction(srcTx LogTransfer, trxId Tx, addr string
 			Decimals: p.Coin().Decimals,
 		},
 	}, nil
+}
+
+func CalculateDecimals(gas int) *big.Int {
+	gasBig := big.NewInt(int64(gas))
+	gasDecimals := big.NewInt(int64(math.Pow10(gasTokenDecimals)))
+
+	return new(big.Int).Mul(gasBig, gasDecimals)
 }
 
 func hexToInt(hex string) (uint64, error) {

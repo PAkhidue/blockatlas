@@ -14,7 +14,7 @@ const (
 type LogRequest struct {
 	Options     Options       `json:"options,omitempty"`
 	CriteriaSet []CriteriaSet `json:"criteriaSet,omitempty"`
-	Range       Range         `json:"range,omitempty"`
+	Range       *Range        `json:"range,omitempty"`
 	Order       string        `json:"order,omitempty"`
 }
 
@@ -54,6 +54,7 @@ type Tx struct {
 }
 
 type TxReceipt struct {
+	GasUsed int      `json:"gasUsed"`
 	Paid    string   `json:"paid"`
 	Outputs []Output `json:"outputs"`
 }

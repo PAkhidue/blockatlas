@@ -2,8 +2,9 @@ package vechain
 
 import (
 	"fmt"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 	"strings"
+
+	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 )
 
 type Client struct {
@@ -24,12 +25,11 @@ func (c *Client) GetBlockByNumber(num int64) (block Block, err error) {
 
 func (c *Client) GetTransactions(address string, block int64) (txs []LogTransfer, err error) {
 	err = c.Post(&txs, "logs/transfer", LogRequest{
-		Options: Options{Offset: 0, Limit: 15},
+		Options: Options{Offset: 0, Limit: 25},
 		CriteriaSet: []CriteriaSet{
 			{Sender: address},
 			{Recipient: address},
 		},
-		Range: Range{Unit: rangeUnit, From: 0, To: block},
 		Order: "desc",
 	})
 	return
@@ -37,14 +37,13 @@ func (c *Client) GetTransactions(address string, block int64) (txs []LogTransfer
 
 // Get events related to address and VIP180 contract address
 func (c *Client) GetLogsEvent(address, token string, block int64) (txs []LogEvent, err error) {
-	tokenHex := getFilter(address)
+	addressHex := getFilter(address)
 	err = c.Post(&txs, "logs/event", LogRequest{
-		Options: Options{Offset: 0, Limit: 10},
+		Options: Options{Offset: 0, Limit: 25},
 		CriteriaSet: []CriteriaSet{
-			{Address: token, Topic1: tokenHex},
-			{Address: token, Topic2: tokenHex},
+			{Address: token, Topic1: addressHex},
+			{Address: token, Topic2: addressHex},
 		},
-		Range: Range{Unit: rangeUnit, From: 0, To: block},
 		Order: "desc",
 	})
 	return
