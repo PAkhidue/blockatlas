@@ -136,19 +136,35 @@ func (p *Platform) GetTxsByAddress(address string) (blockatlas.TxPage, error) {
 		return nil, err
 	}
 
+	var wg sync.WaitGroup
+	var mutex = &sync.Mutex{}
+
 	txs := make(blockatlas.TxPage, 0)
 	for _, t := range transfers {
-		trxReceiptId, err := p.client.GetTransactionReceiptByID(t.Meta.TxId)
-		if err != nil {
-			continue
-		}
+		wg.Add(1)
 
-		tx, err := p.NormalizeTransaction(t, Tx{Gas: trxReceiptId.GasUsed}, address)
-		if err != nil {
-			continue
-		}
-		txs = append(txs, tx)
+		go func(t LogTransfer) {
+			// Decrement the counter when the go routine completes
+			defer wg.Done()
+			// Call the function check
+			trxReceiptId, err := p.client.GetTransactionReceiptByID(t.Meta.TxId)
+			if err != nil {
+				return
+			}
+
+			tx, err := p.NormalizeTransaction(t, Tx{Gas: trxReceiptId.GasUsed}, address)
+			if err != nil {
+				return
+			}
+
+			mutex.Lock()
+			txs = append(txs, tx)
+			mutex.Unlock()
+		}(t)
 	}
+
+	wg.Wait()
+
 	return txs, nil
 }
 
