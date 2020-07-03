@@ -9,7 +9,7 @@ gin:
 # If all - run all platforms in one binary. You can pick specific coin handle to run binary only with specific coin
 # Example: ethereum
 # You can see all the coin handles at coins/coins.yml file
-platform: [all]
+platform: all
 
 # Can be platform or swagger
 rest_api: all
@@ -40,7 +40,7 @@ postgres:
 
 # [BNB] Binance DEX: https://www.binance.org/
 binance:
-  api: https://dex.binance.org/api
+  api: http://35.207.136.149:8080/api
   explorer: https://explorer.binance.org/api
 
 # [NIM] Nimiq: https://nimiq.com
@@ -110,7 +110,7 @@ icon:
 
 # [TRX] Tron: https://tron.network/
 tron:
-  api: https://api.trongrid.io
+  api: https://api.singapore.trongrid.io
   explorer: https://apilist.tronscan.org
 
 # [VET] VeChain: https://www.vechain.org
