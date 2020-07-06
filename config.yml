@@ -110,7 +110,7 @@ icon:
 
 # [TRX] Tron: https://tron.network/
 tron:
-  api: https://api.singapore.trongrid.io
+  api: https://api.frankfurt.trongrid.io
   explorer: https://apilist.tronscan.org
 
 # [VET] VeChain: https://www.vechain.org
