@@ -14,6 +14,9 @@ import (
 )
 
 func (p *Platform) GetTokenTxsByAddress(address, token string) (blockatlas.TxPage, error) {
+	if token != gasTokenAddress {
+		return nil, nil
+	}
 	curBlock, err := p.CurrentBlockNumber()
 	if err != nil {
 		return nil, err
@@ -85,7 +88,7 @@ func (p *Platform) NormalizeTokenTransaction(srcTx Tx, receipt TxReceipt) (block
 		if len(output.Events) == 0 || len(output.Events[0].Topics) < 3 {
 			continue
 		}
-		event := output.Events[0] // TODO add support for multisend
+		event := output.Events[0]
 		value, err := numbers.HexToDecimal(event.Data)
 		if err != nil {
 			continue
