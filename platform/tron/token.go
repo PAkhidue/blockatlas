@@ -1,10 +1,12 @@
 package tron
 
 import (
-	"github.com/trustwallet/blockatlas/coin"
+	log "github.com/sirupsen/logrus"
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/logger"
+	"github.com/trustwallet/golibs/coin"
+	"strings"
 	"sync"
+	"time"
 )
 
 func (p *Platform) GetTokenListByAddress(address string) (blockatlas.TokenPage, error) {
@@ -29,13 +31,13 @@ func (p *Platform) GetTokenListByAddress(address string) (blockatlas.TokenPage, 
 
 	trc20Tokens, err := p.explorerClient.fetchAllTRC20Tokens(address)
 	if err != nil {
-		logger.Error("Explorer error" + err.Error())
+		log.Error("Explorer error" + err.Error())
 	}
 
 	for _, t := range trc20Tokens {
 		tokenPage = append(tokenPage, blockatlas.Token{
 			Name:     t.Name,
-			Symbol:   t.Symbol,
+			Symbol:   strings.ToUpper(t.Symbol),
 			Decimals: uint(t.Decimals),
 			TokenID:  t.ContractAddress,
 			Coin:     coin.Tron().ID,
@@ -53,9 +55,10 @@ func (p *Platform) getTokens(ids []string) chan blockatlas.Token {
 		wg.Add(1)
 		go func(i string, c chan blockatlas.Token) {
 			defer wg.Done()
+			time.Sleep(time.Millisecond)
 			err := p.getTokensChannel(i, c)
 			if err != nil {
-				logger.Error(err)
+				log.Error("tron getTokens: " + i)
 			}
 		}(id, tkChan)
 	}
@@ -67,7 +70,6 @@ func (p *Platform) getTokens(ids []string) chan blockatlas.Token {
 func (p *Platform) getTokensChannel(id string, tkChan chan blockatlas.Token) error {
 	info, err := p.client.fetchTokenInfo(id)
 	if err != nil || len(info.Data) == 0 {
-		logger.Error(err, "fetchTokenInfo: invalid token")
 		return err
 	}
 	asset := NormalizeToken(info.Data[0])
@@ -78,7 +80,7 @@ func (p *Platform) getTokensChannel(id string, tkChan chan blockatlas.Token) err
 func NormalizeToken(info AssetInfo) blockatlas.Token {
 	return blockatlas.Token{
 		Name:     info.Name,
-		Symbol:   info.Symbol,
+		Symbol:   strings.ToUpper(info.Symbol),
 		TokenID:  info.ID,
 		Coin:     coin.TRX,
 		Decimals: info.Decimals,

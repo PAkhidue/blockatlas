@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/imroc/req"
 	"github.com/patrickmn/go-cache"
+	log "github.com/sirupsen/logrus"
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"github.com/trustwallet/blockatlas/pkg/logger"
 	"net/url"
 	"strconv"
 	"time"
@@ -21,28 +21,28 @@ func InitClient(url string) Client {
 }
 
 func (c Client) FetchLatestBlockNumber() (int64, error) {
-	resp, err := req.Get(c.url+"/v1/node-info", nil)
+	resp, err := req.Get(c.url+"/api/v1/node-info", nil)
 	if err != nil {
 		return 0, err
 	}
 	var result NodeInfoResponse
 	if err := resp.ToJSON(&result); err != nil {
-		logger.Error("URL: " + resp.Request().URL.String())
-		logger.Error("Status code: " + resp.Response().Status)
+		log.Error("URL: " + resp.Request().URL.String())
+		log.Error("Status code: " + resp.Response().Status)
 		return 0, err
 	}
 	return int64(result.SyncInfo.LatestBlockHeight), nil
 }
 
 func (c Client) FetchTransactionsInBlock(blockNumber int64) (TransactionsInBlockResponse, error) {
-	resp, err := req.Get(c.url+fmt.Sprintf("/v2/transactions-in-block/%d", blockNumber), nil)
+	resp, err := req.Get(c.url+fmt.Sprintf("/api/v2/transactions-in-block/%d", blockNumber), nil)
 	if err != nil {
 		return TransactionsInBlockResponse{}, err
 	}
 	var result TransactionsInBlockResponse
 	if err := resp.ToJSON(&result); err != nil {
-		logger.Error("URL: " + resp.Request().URL.String())
-		logger.Error("Status code: " + resp.Response().Status)
+		log.Error("URL: " + resp.Request().URL.String())
+		log.Error("Status code: " + resp.Response().Status)
 		return TransactionsInBlockResponse{}, err
 	}
 	return result, nil
@@ -52,28 +52,28 @@ func (c Client) FetchTransactionsByAddressAndTokenID(address, tokenID string) ([
 	startTime := strconv.Itoa(int(time.Now().AddDate(0, -3, 0).Unix() * 1000))
 	limit := strconv.Itoa(blockatlas.TxPerPage)
 	params := url.Values{"address": {address}, "txAsset": {tokenID}, "startTime": {startTime}, "limit": {limit}}
-	resp, err := req.Get(c.url+"/v1/transactions", params)
+	resp, err := req.Get(c.url+"/api/v1/transactions", params)
 	if err != nil {
 		return nil, err
 	}
 	var result TransactionsInBlockResponse
 	if err := resp.ToJSON(&result); err != nil {
-		logger.Error("URL: " + resp.Request().URL.String())
-		logger.Error("Status code: " + resp.Response().Status)
+		log.Error("URL: " + resp.Request().URL.String())
+		log.Error("Status code: " + resp.Response().Status)
 		return nil, err
 	}
 	return result.Tx, nil
 }
 
 func (c Client) FetchAccountMeta(address string) (AccountMeta, error) {
-	resp, err := req.Get(c.url+fmt.Sprintf("/v1/account/%s", address), nil)
+	resp, err := req.Get(c.url+fmt.Sprintf("/api/v1/account/%s", address), nil)
 	if err != nil {
 		return AccountMeta{}, err
 	}
 	var result AccountMeta
 	if err := resp.ToJSON(&result); err != nil {
-		logger.Error("URL: " + resp.Request().URL.String())
-		logger.Error("Status code: " + resp.Response().Status)
+		log.Error("URL: " + resp.Request().URL.String())
+		log.Error("Status code: " + resp.Response().Status)
 		return AccountMeta{}, err
 	}
 	return result, nil
@@ -86,13 +86,13 @@ func (c Client) FetchTokens() (Tokens, error) {
 	}
 	result := new(Tokens)
 	query := url.Values{"limit": {tokensLimit}}
-	resp, err := req.Get(c.url+"/v1/tokens", query)
+	resp, err := req.Get(c.url+"/api/v1/tokens", query)
 	if err != nil {
 		return nil, err
 	}
 	if err := resp.ToJSON(&result); err != nil {
-		logger.Error("URL: " + resp.Request().URL.String())
-		logger.Error("Status code: " + resp.Response().Status)
+		log.Error("URL: " + resp.Request().URL.String())
+		log.Error("Status code: " + resp.Response().Status)
 		return nil, err
 	}
 	c.Cache.Set("tokens", *result, cache.DefaultExpiration)

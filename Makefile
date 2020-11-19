@@ -7,9 +7,8 @@ BUILD := $(shell git rev-parse --short HEAD)
 DATETIME := $(shell date +"%Y.%m.%d-%H:%M:%S")
 PROJECT_NAME := $(shell basename "$(PWD)")
 API := api
-NOTIFIER := notifier
+CONSUMER := consumer
 PARSER := parser
-SUBSCRIBER := subscriber
 COIN_FILE := coin/coins.yml
 COIN_GO_FILE := coin/coins.go
 GEN_COIN_FILE := coin/gen.go
@@ -17,7 +16,7 @@ DOCKER_LOCAL_DB_IMAGE_NAME := test_db
 DOCKER_LOCAL_MQ_IMAGE_NAME := mq
 DOCKER_LOCAL_DB_USER :=user
 DOCKER_LOCAL_DB_PASS :=pass
-DOCKER_LOCAL_DB := my_db
+DOCKER_LOCAL_DB := blockatlas
 
 # Go related variables.
 GOBASE := $(shell pwd)
@@ -42,9 +41,8 @@ STDERR := /tmp/.$(PROJECT_NAME)-stderr.txt
 
 # PID file will keep the process id of the server
 PID_API := /tmp/.$(PROJECT_NAME).$(API).pid
-PID_NOTIFIER := /tmp/.$(PROJECT_NAME).$(NOTIFIER).pid
+PID_CONSUMER := /tmp/.$(PROJECT_NAME).$(CONSUMER).pid
 PID_PARSER := /tmp/.$(PROJECT_NAME).$(PARSER).pid
-PID_SUBSCRIBER := /tmp/.$(PROJECT_NAME).$(SUBSCRIBER).pid
 PID_MOCKSERVER := /tmp/.$(PROJECT_NAME).mockserver.pid
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
@@ -54,52 +52,43 @@ install: go-get
 
 ## start: Start API, Observer and Sync in development mode.
 start:
-	@bash -c "$(MAKE) clean compile start-api start-parser start-notifier start-subscriber"
+	@bash -c "$(MAKE) clean compile start-api start-parser start-consumer"
 
 ## start-api: Start platform api in development mode.
 start-api: stop
 	@echo "  >  Starting $(PROJECT_NAME)"
 	@-$(GOBIN)/$(API)/api -c $(CONFIG_FILE) 2>&1 & echo $$! > $(PID_API)
-	@cat $(PID_API) | sed "/^/s/^/  \>  API PID: /"
+	@cat $(PID_API) | sed "/^/s/^/  \>  Api PID: /"
 	@echo "  >  Error log: $(STDERR)"
 
 # start-platform-api-mock: Start API.  Similar to start-platform-api, but uses config file with mock URLs, and port 8437.
 start-api-mock: stop start-mockserver
 	@echo "  >  Starting $(PROJECT_NAME) API"
 	@-$(GOBIN)/$(API)/api -p 8437 -c $(CONFIG_MOCK_FILE) 2>&1 & echo $$! > $(PID_API)
-	@cat $(PID_API) | sed "/^/s/^/  \>  API PID: /"
+	@cat $(PID_API) | sed "/^/s/^/  \>  Mock PID: /"
 	@echo "  >  Error log: $(STDERR)"
 
-## start-observer-parser: Start observer-parser in development mode.
+## start-parser: Start observer-parser in development mode.
 start-parser: stop
 	@echo "  >  Starting $(PROJECT_NAME)"
 	@-$(GOBIN)/$(PARSER)/parser -c $(CONFIG_FILE) 2>&1 & echo $$! > $(PID_PARSER)
-	@cat $(PID_PARSER) | sed "/^/s/^/  \>  Sync PID: /"
+	@cat $(PID_PARSER) | sed "/^/s/^/  \>  Parser PID: /"
 	@echo "  >  Error log: $(STDERR)"
 
-## start-observer-notifier: Start observer-notifier in development mode.
-start-notifier: stop
+## start-consumer: Start observer-consumer in development mode.
+start-consumer: stop
 	@echo "  >  Starting $(PROJECT_NAME)"
-	@-$(GOBIN)/$(NOTIFIER)/notifier -c $(CONFIG_FILE) 2>&1 & echo $$! > $(PID_NOTIFIER)
-	@cat $(PID_NOTIFIER) | sed "/^/s/^/  \>  Sync PID: /"
-	@echo "  >  Error log: $(STDERR)"
-
-## start-observer-subscriber: Start observer-subscriber in development mode.
-start-subscriber: stop
-	@echo "  >  Starting $(PROJECT_NAME)"
-	@-$(GOBIN)/$(SUBSCRIBER)/subscriber -c $(CONFIG_FILE) 2>&1 & echo $$! > $(PID_SUBSCRIBER)
-	@cat $(PID_SUBSCRIBER) | sed "/^/s/^/  \>  Sync PID: /"
+	@-$(GOBIN)/$(CONSUMER)/consumer -c $(CONFIG_FILE) 2>&1 & echo $$! > $(PID_CONSUMER)
+	@cat $(PID_CONSUMER) | sed "/^/s/^/  \>  consumer PID: /"
 	@echo "  >  Error log: $(STDERR)"
 
 ## stop: Stop development mode.
 stop:
-	@-touch $(PID_API) $(PID_NOTIFIER) $(PID_PARSER) $(PID_SUBSCRIBER) $(PID_MOCKSERVER)
+	@-touch $(PID_API) $(PID_CONSUMER) $(PID_PARSER)
 	@-kill `cat $(PID_API)` 2> /dev/null || true
-	@-kill `cat $(PID_NOTIFIER)` 2> /dev/null || true
+	@-kill `cat $(PID_CONSUMER)` 2> /dev/null || true
 	@-kill `cat $(PID_PARSER)` 2> /dev/null || true
-	@-kill `cat $(PID_SUBSCRIBER)` 2> /dev/null || true
-	@-kill `cat $(PID_MOCKSERVER)` 2> /dev/null || true
-	@-rm $(PID_API) $(PID_NOTIFIER) $(PID_PARSER) $(PID_SUBSCRIBER) $(PID_MOCKSERVER)
+	@-rm $(PID_API) $(PID_CONSUMER) $(PID_PARSER)
 
 stop-mockserver:
 	@-touch $(PID_MOCKSERVER)
@@ -181,11 +170,10 @@ newman-mocked: install-newman go-compile
 
 ## newman-mocked-params: Run mocked Postman Newman tests, after starting platform api.
 ## The host parameter is required.
-## E.g.: $ make newman-mocked-params test=domain host=http://localhost:8437
+## E.g.: $ make newman-mocked-params test=transaction host=http://localhost:8437
 newman-mocked-params: start-api-mock
 ifeq (,$(test))
 	@bash -c "$(MAKE) newman-run test=transaction host=$(host) && \
-	          $(MAKE) newman-run test=domain host=$(host) && \
 			  $(MAKE) newman-run test=staking host=$(host) && \
 			  $(MAKE) newman-run test=token host=$(host) && \
 			  $(MAKE) newman-run test=collection host=$(host)"
@@ -195,14 +183,13 @@ else
 	@bash -c "$(MAKE) stop"
 endif
 
-## newman: Run Postman Newman test, the host parameter is required, and you can specify the name of the test do you wanna run (transaction, token, staking, collection, domain, healthcheck, observer). e.g $ make newman test=staking host=http://localhost:8420
+## newman: Run Postman Newman test, the host parameter is required, and you can specify the name of the test do you wanna run (transaction, token, staking, collection, healthcheck, observer). e.g $ make newman test=staking host=http://localhost:8420
 newman: install-newman
 ifeq (,$(test))
 	@bash -c "$(MAKE) newman-run test=transaction host=$(host)"
 	@bash -c "$(MAKE) newman-run test=token host=$(host)"
 	@bash -c "$(MAKE) newman-run test=staking host=$(host)"
 	@bash -c "$(MAKE) newman-run test=collection host=$(host)"
-	@bash -c "$(MAKE) newman-run test=domain host=$(host)"
 	@bash -c "$(MAKE) newman-run test=healthcheck host=$(host)"
 else
 	@bash -c "$(MAKE) newman-run test=$(test) host=$(host)"
@@ -219,7 +206,7 @@ endif
 
 go-compile: go-get go-build
 
-go-build: go-build-api go-build-notifier go-build-parser go-build-subscriber
+go-build: go-build-api go-build-consumer go-build-parser
 
 docker-shutdown:
 	@echo "  >  Shutdown docker containers..."
@@ -235,17 +222,13 @@ go-build-api:
 	@echo "  >  Building api binary..."
 	GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(API)/api ./cmd/$(API)
 
-go-build-notifier:
-	@echo "  >  Building notifier binary..."
-	GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(NOTIFIER)/notifier ./cmd/$(NOTIFIER)
+go-build-consumer:
+	@echo "  >  Building consumer binary..."
+	GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(CONSUMER)/consumer ./cmd/$(CONSUMER)
 
 go-build-parser:
 	@echo "  >  Building parser binary..."
 	GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PARSER)/parser ./cmd/$(PARSER)
-
-go-build-subscriber:
-	@echo "  >  Building subscriber binary..."
-	GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(SUBSCRIBER)/subscriber ./cmd/$(SUBSCRIBER)
 
 go-generate:
 	@echo "  >  Generating dependency files..."

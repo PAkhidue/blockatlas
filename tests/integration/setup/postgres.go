@@ -2,17 +2,17 @@ package setup
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest"
 	"github.com/trustwallet/blockatlas/db"
 	"github.com/trustwallet/blockatlas/db/models"
+	"gorm.io/gorm"
 	"log"
 )
 
 const (
 	pgUser = "user"
 	pgPass = "pass"
-	pgDB   = "my_db"
+	pgDB   = "blockatlas"
 )
 
 var (
@@ -24,8 +24,12 @@ var (
 	}
 
 	tables = []interface{}{
-		&models.Subscription{},
+		&models.AssetSubscription{},
+		&models.NotificationSubscription{},
 		&models.Tracker{},
+		&models.AddressToAssetAssociation{},
+		&models.Asset{},
+		&models.Address{},
 	}
 
 	uri string
@@ -37,24 +41,28 @@ func runPgContainerAndInitConnection() (*db.Instance, error) {
 		dbConn *db.Instance
 		err    error
 	)
-	if err := pool.Retry(func() error {
-		dbConn, err = db.New(uri, "test")
+	err = pool.Retry(func() error {
+		dbConn, err = db.New(uri, uri, false)
 		return err
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, err
 	}
 	autoMigrate(dbConn.Gorm)
-
 	return dbConn, nil
 }
 
 func CleanupPgContainer(dbConn *gorm.DB) {
-	dbConn.DropTable(tables...)
+	if err := dbConn.Migrator().DropTable(tables...); err != nil {
+		log.Fatal(err)
+	}
 	autoMigrate(dbConn)
 }
 
 func autoMigrate(dbConn *gorm.DB) {
-	dbConn.AutoMigrate(tables...)
+	if err := dbConn.AutoMigrate(tables...); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func stopPgContainer() error {

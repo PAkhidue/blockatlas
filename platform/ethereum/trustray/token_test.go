@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/trustwallet/blockatlas/coin"
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+	"github.com/trustwallet/golibs/coin"
 )
 
 const tokenSrc = `
@@ -115,7 +115,7 @@ func TestNormalizeToken(t *testing.T) {
 				Type:     blockatlas.TokenTypeCLO20,
 			},
 		},
-		{"unkown",
+		{"unknown",
 			tokenSrc,
 			1999,
 			blockatlas.Token{
@@ -124,7 +124,7 @@ func TestNormalizeToken(t *testing.T) {
 				Decimals: 18,
 				TokenID:  "0xa14839c9837657EFcDE754EbEAF5cbECDd801B2A",
 				Coin:     1999,
-				Type:     "unknown",
+				Type:     blockatlas.TokenTypeERC20,
 			},
 		},
 	}

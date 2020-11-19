@@ -1,61 +1,110 @@
 package db
 
 import (
-	"github.com/jinzhu/gorm"
-	"github.com/trustwallet/blockatlas/db/models"
-	"github.com/trustwallet/blockatlas/pkg/logger"
-	"go.elastic.co/apm/module/apmgorm"
-	_ "go.elastic.co/apm/module/apmgorm/dialects/postgres"
+	"context"
+	"errors"
+	"gorm.io/gorm/logger"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/trustwallet/blockatlas/db/models"
+
+	gocache "github.com/patrickmn/go-cache"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/plugin/dbresolver"
 )
 
 type Instance struct {
-	Gorm *gorm.DB
+	Gorm        *gorm.DB
+	MemoryCache *gocache.Cache
 }
 
-func New(uri, env string) (*Instance, error) {
-	var (
-		g   *gorm.DB
-		err error
-	)
-	if env == "prod" {
-		g, err = apmgorm.Open("postgres", uri)
-	} else {
-		g, err = gorm.Open("postgres", uri)
-	}
+// By gorm-bulk-insert author:
+// "Depending on the number of variables included, 2000 to 3000 is recommended."
+const batchCount = 3000
 
+func New(uri, readUri string, logMode bool) (*Instance, error) {
+	cfg := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
+
+	db, err := gorm.Open(postgres.Open(uri), cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	g.AutoMigrate(
-		&models.Subscription{},
-		&models.Tracker{},
-	)
+	err = db.Use(dbresolver.Register(dbresolver.Config{
+		Replicas: []gorm.Dialector{
+			postgres.Open(readUri),
+		},
+	}))
+	if err != nil {
+		return nil, err
+	}
 
-	i := &Instance{Gorm: g}
+	err = db.AutoMigrate(
+		&models.NotificationSubscription{},
+		&models.Tracker{},
+		&models.Asset{},
+		&models.AssetSubscription{},
+		&models.Address{},
+		&models.AddressToAssetAssociation{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	mc := gocache.New(gocache.NoExpiration, gocache.NoExpiration)
+	i := &Instance{Gorm: db, MemoryCache: mc}
 
 	return i, nil
 }
 
-func RestoreConnectionWorker(database *Instance, timeout time.Duration, uri string) {
-	logger.Info("Run PG RestoreConnectionWorker")
-	for {
-		if err := database.Gorm.DB().Ping(); err != nil {
-			for {
-				logger.Warn("PG is not available now")
-				logger.Warn("Trying to connect to PG...")
-				database.Gorm, err = gorm.Open("postgres", uri)
-				if err != nil {
-					logger.Warn("PG is still unavailable:", err.Error())
-					time.Sleep(timeout)
-					continue
-				} else {
-					logger.Info("PG connection restored")
-					break
-				}
-			}
-		}
-		time.Sleep(timeout)
+func (i *Instance) RestoreConnectionWorker(ctx context.Context, timeout time.Duration, uri string) {
+	log.Info("Run PG RestoreConnectionWorker")
+	t := time.NewTicker(timeout)
+
+	if err := i.restoreConnection(uri); err != nil {
+		log.Warn("PG is still unavailable:", err)
 	}
+
+	select {
+	case <-ctx.Done():
+		log.Info("Ctx.Done RestoreConnectionWorker exit")
+		return
+	case <-t.C:
+		if err := i.restoreConnection(uri); err != nil {
+			log.Warn("PG is still unavailable:", err)
+		}
+	}
+}
+
+func (i *Instance) restoreConnection(uri string) error {
+	db, err := i.Gorm.DB()
+	if err != nil {
+		return err
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Warn("PG is not available now")
+		log.Warn("Trying to connect to PG...")
+		i.Gorm, err = gorm.Open(postgres.Open(uri), &gorm.Config{})
+		if err != nil {
+			return err
+		}
+		log.Info("PG connection restored")
+	}
+	return nil
+}
+
+func (i *Instance) MemorySet(key string, data []byte, exp time.Duration, ctx context.Context) error {
+	i.MemoryCache.Set(key, data, exp)
+	return nil
+}
+
+func (i *Instance) MemoryGet(key string, ctx context.Context) ([]byte, error) {
+	res, ok := i.MemoryCache.Get(key)
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return res.([]byte), nil
 }
