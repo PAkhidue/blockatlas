@@ -2,12 +2,13 @@ package tron
 
 import (
 	"errors"
+	"strconv"
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/trustwallet/blockatlas/pkg/address"
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 	"github.com/trustwallet/golibs/coin"
-	"strconv"
-	"strings"
 )
 
 func (p *Platform) GetTxsByAddress(address string) (blockatlas.TxPage, error) {
@@ -23,7 +24,7 @@ func (p *Platform) GetTxsByAddress(address string) (blockatlas.TxPage, error) {
 			continue
 		}
 
-		if len(srcTx.Data.Contracts) > 0 && srcTx.Data.Contracts[0].Type == TransferContract {
+		if len(srcTx.Data.Contracts) > 0 && (srcTx.Data.Contracts[0].Type == TransferContract || srcTx.Data.Contracts[0].Type == TransferAssetContract) {
 			txs = append(txs, *tx)
 		} else {
 			continue
