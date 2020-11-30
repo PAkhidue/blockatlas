@@ -2,12 +2,14 @@ package blockatlas
 
 import (
 	"encoding/json"
-	mapset "github.com/deckarep/golang-set"
-	"github.com/stretchr/testify/assert"
-	"github.com/trustwallet/golibs/coin"
 	"reflect"
 	"sort"
 	"testing"
+
+	mapset "github.com/deckarep/golang-set"
+	"github.com/stretchr/testify/assert"
+	"github.com/trustwallet/golibs/coin"
+	"github.com/trustwallet/golibs/tokentype"
 )
 
 var transferDst1 = Tx{
@@ -568,46 +570,6 @@ func TestTx_TokenID(t *testing.T) {
 
 }
 
-func TestGetEthereumTokenTypeByIndex(t *testing.T) {
-	type args struct {
-		coinIndex uint
-	}
-	tests := []struct {
-		name string
-		args args
-		want TokenType
-	}{
-		{
-			"Ethereum",
-			args{
-				coinIndex: coin.Ethereum().ID,
-			},
-			TokenTypeERC20,
-		},
-		{
-			"Smart Chain",
-			args{
-				coinIndex: coin.Smartchain().ID,
-			},
-			TokenTypeBEP20,
-		},
-		{
-			"Default Name",
-			args{
-				coinIndex: coin.Bitcoin().ID,
-			},
-			TokenTypeERC20,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetEthereumTokenTypeByIndex(tt.args.coinIndex); got != tt.want {
-				t.Errorf("GetEthereumTokenTypeByIndex() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestTokenType(t *testing.T) {
 	type testStruct struct {
 		Name       string
@@ -621,35 +583,35 @@ func TestTokenType(t *testing.T) {
 			Name:       "Tron TRC20",
 			ID:         coin.Tron().ID,
 			TokenID:    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
-			WantedType: string(TokenTypeTRC20),
+			WantedType: string(tokentype.TRC20),
 			WantedOk:   true,
 		},
 		{
 			Name:       "Tron TRC10",
 			ID:         coin.Tron().ID,
 			TokenID:    "1002000",
-			WantedType: string(TokenTypeTRC10),
+			WantedType: string(tokentype.TRC10),
 			WantedOk:   true,
 		},
 		{
 			Name:       "Ethereum ERC20",
 			ID:         coin.Ethereum().ID,
 			TokenID:    "dai",
-			WantedType: string(TokenTypeERC20),
+			WantedType: string(tokentype.ERC20),
 			WantedOk:   true,
 		},
 		{
 			Name:       "Binance BEP20",
 			ID:         coin.Smartchain().ID,
 			TokenID:    "busd",
-			WantedType: string(TokenTypeBEP20),
+			WantedType: string(tokentype.BEP20),
 			WantedOk:   true,
 		},
 		{
 			Name:       "Binance BEP10",
 			ID:         coin.Binance().ID,
 			TokenID:    "busd",
-			WantedType: string(TokenTypeBEP2),
+			WantedType: string(tokentype.BEP2),
 			WantedOk:   true,
 		},
 		{
@@ -756,6 +718,42 @@ func TestTxPage_FilterTransactionsByMemo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.txs.FilterTransactionsByMemo(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FilterTransactionsByMemo() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTxs_FilterTransactionsByType(t *testing.T) {
+	type args struct {
+		types []TransactionType
+	}
+	tests := []struct {
+		name string
+		txs  Txs
+		args args
+		want Txs
+	}{
+		{
+			"Token Transfers",
+			Txs{
+				Tx{Type: TxTransfer},
+				Tx{Type: TxContractCall},
+				Tx{Type: TxNativeTokenTransfer},
+				Tx{Type: TxTokenTransfer},
+			},
+			args{
+				[]TransactionType{TxNativeTokenTransfer, TxTokenTransfer},
+			},
+			Txs{
+				Tx{Type: TxNativeTokenTransfer},
+				Tx{Type: TxTokenTransfer},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.txs.FilterTransactionsByType(tt.args.types); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FilterTransactionsByType() = %v, want %v", got, tt.want)
 			}
 		})
 	}
