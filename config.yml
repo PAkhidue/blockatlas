@@ -30,7 +30,7 @@ observer:
     min: 3s
     max: 30s
   rabbitmq:
-    uri: amqp://localhost:5672
+    url: amqp://localhost:5672
     consumer:
       prefetch_count: 10
 
