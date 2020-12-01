@@ -25,7 +25,7 @@ func (p *Platform) GetTxsByAddress(address string) (blockatlas.TxPage, error) {
 			continue
 		}
 
-		if len(srcTx.Data.Contracts) > 0 && (srcTx.Data.Contracts[0].Type == TransferContract || srcTx.Data.Contracts[0].Type == TransferAssetContract) {
+		if len(srcTx.Data.Contracts) > 0 && srcTx.Data.Contracts[0].Type == TransferContract {
 			txs = append(txs, *tx)
 		} else {
 			continue
@@ -71,7 +71,7 @@ func addTokenMeta(tx *blockatlas.Tx, srcTx Tx, tokenInfo AssetInfo) {
 	tx.Meta = blockatlas.TokenTransfer{
 		Name:     tokenInfo.Name,
 		Symbol:   strings.ToUpper(tokenInfo.Symbol),
-		TokenID:  tokenInfo.ID,
+		TokenID:  tokenInfo.ID.String(),
 		Decimals: tokenInfo.Decimals,
 		Value:    transfer.Amount,
 		From:     tx.From,

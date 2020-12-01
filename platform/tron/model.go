@@ -1,6 +1,8 @@
 package tron
 
 import (
+	"encoding/json"
+
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
 )
 
@@ -91,10 +93,10 @@ type (
 	}
 
 	AssetInfo struct {
-		Name     string `json:"name"`
-		Symbol   string `json:"abbr"`
-		ID       string `json:"id"`
-		Decimals uint   `json:"precision"`
+		Name     string      `json:"name"`
+		Symbol   string      `json:"abbr"`
+		ID       json.Number `json:"id,uint"`
+		Decimals uint        `json:"precision"`
 	}
 
 	Validators struct {
