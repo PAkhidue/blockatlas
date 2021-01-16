@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+
+	"github.com/trustwallet/golibs/client"
 )
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetCurrentBlock() (int64, error) {
@@ -30,6 +32,7 @@ func (c *Client) GetTransactions(address string, block int64) (txs []LogTransfer
 			{Sender: address},
 			{Recipient: address},
 		},
+		Range: Range{Unit: rangeUnit, From: 0, To: block},
 		Order: "desc",
 	})
 	return

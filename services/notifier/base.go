@@ -1,38 +1,23 @@
 package notifier
 
 import (
-	"context"
+	"strconv"
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/trustwallet/blockatlas/db"
-	"github.com/trustwallet/blockatlas/pkg/address"
-	"strconv"
-
-	"go.elastic.co/apm"
 )
 
 const (
-	DefaultPushNotificationsBatchLimit = 50
-
 	Notifier = "Notifier"
 )
 
-var MaxPushNotificationsBatchLimit uint = DefaultPushNotificationsBatchLimit
-
-func RunNotifier(database *db.Instance, delivery amqp.Delivery) {
-	tx := apm.DefaultTracer.StartTransaction("RunNotifier", "app")
-	defer tx.End()
-	ctx := apm.ContextWithTransaction(context.Background(), tx)
-
-	defer func() {
-		if err := delivery.Ack(false); err != nil {
-			log.Error(err)
-		}
-	}()
-
-	txs, err := GetTransactionsFromDelivery(delivery, Notifier, ctx)
+func RunNotifier(database *db.Instance, delivery amqp.Delivery) error {
+	txs, err := GetTransactionsFromDelivery(delivery, Notifier)
 	if err != nil {
-		log.Error("failed to get transactions", err)
+		log.WithFields(log.Fields{"service": Notifier, "txs": txs}).Error("failed to get transactions: ", err)
+		return err
 	}
 
 	allAddresses := make([]string, 0)
@@ -45,28 +30,48 @@ func RunNotifier(database *db.Instance, delivery amqp.Delivery) {
 		addresses[i] = strconv.Itoa(int(txs[0].Coin)) + "_" + addresses[i]
 	}
 
-	if len(txs) < 1 {
-		return
+	if len(txs) == 0 {
+		return nil
 	}
-	subscriptionsDataList, err := database.GetSubscriptionsForNotifications(addresses, ctx)
-	if err != nil || len(subscriptionsDataList) == 0 {
-		return
+	subscriptions, err := database.GetSubscriptions(addresses)
+	if err != nil {
+		return nil
 	}
 
 	notifications := make([]TransactionNotification, 0)
-	for _, sub := range subscriptionsDataList {
-		ua, _, ok := address.UnprefixedAddress(sub.Address.Address)
+	for _, sub := range subscriptions {
+		ua, _, ok := UnprefixedAddress(sub.Address)
 		if !ok {
 			continue
 		}
-		notificationsForAddress := buildNotificationsByAddress(ua, txs, ctx)
+		notificationsForAddress := buildNotificationsByAddress(ua, txs)
 		notifications = append(notifications, notificationsForAddress...)
 	}
 
-	batches := getNotificationBatches(notifications, MaxPushNotificationsBatchLimit, ctx)
-
-	for _, batch := range batches {
-		publishNotificationBatch(batch, ctx)
+	if len(notifications) == 0 {
+		return nil
 	}
-	log.Info("------------------------------------------------------------")
+
+	err = publishNotifications(notifications)
+	if err != nil {
+		log.WithFields(log.Fields{"service": Notifier}).Error(err)
+	}
+
+	return nil
+}
+
+func UnprefixedAddress(address string) (string, uint, bool) {
+	result := strings.Split(address, "_")
+	if len(result) != 2 {
+		return "", 0, false
+	}
+	addr := result[1]
+	if len(addr) == 0 {
+		return "", 0, false
+	}
+	id, err := strconv.Atoi(result[0])
+	if err != nil {
+		return "", 0, false
+	}
+	return addr, uint(id), true
 }

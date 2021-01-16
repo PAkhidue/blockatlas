@@ -2,8 +2,7 @@ package tron
 
 import (
 	"encoding/json"
-
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+	"github.com/trustwallet/golibs/types"
 )
 
 type (
@@ -56,10 +55,10 @@ type (
 	}
 
 	TransferValue struct {
-		Amount       blockatlas.Amount `json:"amount"`
-		OwnerAddress string            `json:"owner_address"`
-		ToAddress    string            `json:"to_address"`
-		AssetName    string            `json:"asset_name,omitempty"`
+		Amount       types.Amount `json:"amount"`
+		OwnerAddress string       `json:"owner_address"`
+		ToAddress    string       `json:"to_address"`
+		AssetName    string       `json:"asset_name,omitempty"`
 	}
 
 	Account struct {
@@ -93,10 +92,10 @@ type (
 	}
 
 	AssetInfo struct {
-		Name     string      `json:"name"`
-		Symbol   string      `json:"abbr"`
-		ID       json.Number `json:"id,uint"`
-		Decimals uint        `json:"precision"`
+		Name     string `json:"name"`
+		Symbol   string `json:"abbr"`
+		ID       uint   `json:"id"`
+		Decimals uint   `json:"precision"`
 	}
 
 	Validators struct {

@@ -1,37 +1,13 @@
 package notifier
 
-import (
-	"context"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"go.elastic.co/apm"
-)
+import "github.com/trustwallet/golibs/types"
 
 type TransactionNotification struct {
-	Action blockatlas.TransactionType `json:"action"`
-	Result blockatlas.Tx              `json:"result"`
+	Action types.TransactionType `json:"action"`
+	Result types.Tx              `json:"result"`
 }
 
-func getNotificationBatches(notifications []TransactionNotification, sizeUint uint, ctx context.Context) [][]TransactionNotification {
-	span, _ := apm.StartSpan(ctx, "getNotificationBatches", "app")
-	defer span.End()
-	size := int(sizeUint)
-	resultLength := (len(notifications) + size - 1) / size
-	result := make([][]TransactionNotification, resultLength)
-	lo, hi := 0, size
-	for i := range result {
-		if hi > len(notifications) {
-			hi = len(notifications)
-		}
-		result[i] = notifications[lo:hi:hi]
-		lo, hi = hi, hi+size
-	}
-	return result
-}
-
-func buildNotificationsByAddress(address string, txs blockatlas.Txs, ctx context.Context) []TransactionNotification {
-	span, _ := apm.StartSpan(ctx, "buildNotification", "app")
-	defer span.End()
-
+func buildNotificationsByAddress(address string, txs types.Txs) []TransactionNotification {
 	transactionsByAddress := toUniqueTransactions(findTransactionsByAddress(txs, address))
 
 	result := make([]TransactionNotification, 0, len(transactionsByAddress))
@@ -56,9 +32,9 @@ func ToUniqueAddresses(addresses []string) []string {
 	return list
 }
 
-func toUniqueTransactions(txs []blockatlas.Tx) []blockatlas.Tx {
+func toUniqueTransactions(txs []types.Tx) []types.Tx {
 	keys := make(map[string]bool)
-	var list []blockatlas.Tx
+	var list []types.Tx
 	for _, entry := range txs {
 		key := entry.ID + string(entry.Direction)
 		if _, value := keys[key]; !value {
@@ -69,8 +45,8 @@ func toUniqueTransactions(txs []blockatlas.Tx) []blockatlas.Tx {
 	return list
 }
 
-func findTransactionsByAddress(txs blockatlas.Txs, address string) []blockatlas.Tx {
-	result := make([]blockatlas.Tx, 0)
+func findTransactionsByAddress(txs types.Txs, address string) []types.Tx {
+	result := make([]types.Tx, 0)
 	for _, tx := range txs {
 		if containsAddress(tx, address) {
 			result = append(result, tx)
@@ -79,7 +55,7 @@ func findTransactionsByAddress(txs blockatlas.Txs, address string) []blockatlas.
 	return result
 }
 
-func containsAddress(tx blockatlas.Tx, address string) bool {
+func containsAddress(tx types.Tx, address string) bool {
 	allAddresses := tx.GetAddresses()
 	txAddresses := ToUniqueAddresses(allAddresses)
 	for _, a := range txAddresses {

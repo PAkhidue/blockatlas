@@ -1,50 +1,38 @@
 package notifier
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 
-	"github.com/trustwallet/golibs/coin"
+	"github.com/trustwallet/blockatlas/internal"
+	"github.com/trustwallet/golibs/types"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
-	"github.com/trustwallet/blockatlas/mq"
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-	"go.elastic.co/apm"
 )
 
-func GetTransactionsFromDelivery(delivery amqp.Delivery, service string, ctx context.Context) (blockatlas.Txs, error) {
-	var txs blockatlas.Txs
+func GetTransactionsFromDelivery(delivery amqp.Delivery, service string) (types.Txs, error) {
+	var transactions types.Txs
 
-	span, _ := apm.StartSpan(ctx, "GetTransactionsFromDelivery", "app")
-	defer span.End()
-
-	if err := json.Unmarshal(delivery.Body, &txs); err != nil {
+	if err := json.Unmarshal(delivery.Body, &transactions); err != nil {
 		return nil, err
 	}
 
-	if len(txs) == 0 {
-		return nil, errors.New("empty txs list")
-	}
+	log.WithFields(log.Fields{"service": service, "notifications": len(transactions)}).Info("Consumed")
 
-	log.WithFields(log.Fields{"service": service, "txs": len(txs), "coin": coin.Coins[txs[0].Coin].Handle}).Info("Consumed")
-
-	return txs, nil
+	return transactions, nil
 }
 
-func publishNotificationBatch(batch []TransactionNotification, ctx context.Context) {
-	span, _ := apm.StartSpan(ctx, "getNotificationBatches", "app")
-	defer span.End()
-
-	raw, err := json.Marshal(batch)
+func publishNotifications(notifications []TransactionNotification) error {
+	raw, err := json.Marshal(notifications)
 	if err != nil {
-		log.Fatal("publishNotificationBatch marshal: ", err)
+		return err
 	}
-	err = mq.TxNotifications.Publish(raw)
+	err = internal.TxNotifications.Publish(raw)
 	if err != nil {
-		log.Fatal("publishNotificationBatch publish:", err)
+		return err
 	}
 
-	log.WithFields(log.Fields{"service": Notifier, "txs": len(batch)}).Info("Txs batch dispatched")
+	log.WithFields(log.Fields{"service": Notifier, "notifications": len(notifications)}).Info("Notifications send")
+
+	return nil
 }

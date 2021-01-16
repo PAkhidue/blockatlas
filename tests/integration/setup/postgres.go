@@ -2,11 +2,12 @@ package setup
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/ory/dockertest"
 	"github.com/trustwallet/blockatlas/db"
 	"github.com/trustwallet/blockatlas/db/models"
 	"gorm.io/gorm"
-	"log"
 )
 
 const (
@@ -24,15 +25,13 @@ var (
 	}
 
 	tables = []interface{}{
-		&models.AssetSubscription{},
-		&models.NotificationSubscription{},
 		&models.Tracker{},
-		&models.AddressToAssetAssociation{},
 		&models.Asset{},
-		&models.Address{},
+		&models.Subscription{},
+		&models.SubscriptionsAssetAssociation{},
 	}
 
-	uri string
+	url string
 )
 
 func runPgContainerAndInitConnection() (*db.Instance, error) {
@@ -42,7 +41,7 @@ func runPgContainerAndInitConnection() (*db.Instance, error) {
 		err    error
 	)
 	err = pool.Retry(func() error {
-		dbConn, err = db.New(uri, uri, false)
+		dbConn, err = db.New(url, false)
 		return err
 	})
 	if err != nil {
@@ -81,7 +80,7 @@ func runPgContainer() *dockertest.Pool {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	uri = fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable",
+	url = fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable",
 		pgUser, pgPass, pgResource.GetPort("5432/tcp"), pgDB,
 	)
 	return pool

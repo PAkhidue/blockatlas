@@ -1,13 +1,13 @@
 package solana
 
 import (
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
+	"github.com/trustwallet/golibs/client"
 )
 
 const stakeProgramId = "Stake11111111111111111111111111111111111111"
 
 type Client struct {
-	blockatlas.Request
+	client.Request
 }
 
 func (c *Client) GetCurrentVoteAccounts() (validators []VoteAccount, err error) {
@@ -35,4 +35,51 @@ func (c *Client) GetEpochInfo() (epochInfo EpochInfo, err error) {
 func (c *Client) GetMinimumBalanceForRentExemption() (minimumBalance uint64, err error) {
 	err = c.RpcCall(&minimumBalance, "getMinimumBalanceForRentExemption", []uint64{4008})
 	return
+}
+
+func (c *Client) GetTransactionList(address string) ([]ConfirmedSignature, error) {
+	var signatures []ConfirmedSignature
+	params := []interface{}{
+		address,
+		map[string]interface{}{"limit": 25},
+	}
+	err := c.RpcCall(&signatures, "getConfirmedSignaturesForAddress2", params)
+	if err != nil {
+		return nil, err
+	}
+	return signatures, nil
+}
+
+func (c *Client) GetTransactions(address string) ([]ConfirmedTransaction, error) {
+	// get tx list
+	signatures, err := c.GetTransactionList(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// build batch request
+	requests := make(client.RpcRequests, 0)
+	for _, sig := range signatures {
+		requests = append(requests, &client.RpcRequest{
+			Method: "getConfirmedTransaction",
+			Params: []string{
+				sig.Signature,
+				"jsonParsed",
+			},
+		})
+	}
+	var txs []ConfirmedTransaction
+	responses, err := c.RpcBatchCall(requests)
+	if err != nil {
+		return txs, err
+	}
+
+	// convert to ConfirmedTransaction
+	for _, response := range responses {
+		var tx ConfirmedTransaction
+		if err := response.GetObject(&tx); err == nil {
+			txs = append(txs, tx)
+		}
+	}
+	return txs, nil
 }
