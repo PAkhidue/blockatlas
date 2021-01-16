@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trustwallet/blockatlas/pkg/blockatlas"
-
 	"github.com/trustwallet/golibs/client"
 )
 

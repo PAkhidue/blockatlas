@@ -1,7 +1,6 @@
 package tron
 
 import (
-	"encoding/json"
 	"github.com/trustwallet/golibs/types"
 )
 

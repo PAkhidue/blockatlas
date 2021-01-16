@@ -3,13 +3,11 @@ package tron
 import (
 	"strings"
 	"sync"
-	"time"
 
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/trustwallet/golibs/coin"
-	"github.com/trustwallet/golibs/tokentype"
 	"github.com/trustwallet/golibs/types"
 )
 

@@ -31,7 +31,7 @@ consumer:
 
 # [BNB] Binance DEX: https://www.binance.org/
 binance:
-  api: http://35.207.136.149:8080/api
+  api: http://35.246.168.131:8080/api
   explorer: https://explorer.binance.org/api
 
 # [NIM] Nimiq: https://nimiq.com
